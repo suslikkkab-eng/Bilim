@@ -1,0 +1,10 @@
+# Локальные/секретные файлы — не должны попадать в образ
+.env
+main.exe
+server
+backend.log
+backend.err
+-Headers
+_scratch/
+_pingtest/
+*.log

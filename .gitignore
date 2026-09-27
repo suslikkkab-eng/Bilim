@@ -1,0 +1,27 @@
+# Зависимости
+node_modules/
+
+# Сборка
+dist/
+
+# Секреты — НИКОГДА не коммитить!
+.env
+backend/.env
+
+# Бинарники бэкенда
+backend/main.exe
+backend/server
+
+# Логи и временные
+backend/backend.log
+backend/backend.err
+backend/-Headers
+backend/_scratch/
+backend/_pingtest/
+*.log
+_launch.log
+_diag.log
+
+# ОС
+.DS_Store
+Thumbs.db
