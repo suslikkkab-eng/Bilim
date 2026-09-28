@@ -242,6 +242,7 @@ func sendEmail(to, code string) error {
 	pass := os.Getenv("SMTP_PASSWORD")
 	smtpHost := os.Getenv("SMTP_HOST")
 	smtpPortStr := os.Getenv("SMTP_PORT")
+	useSSL := strings.EqualFold(os.Getenv("SMTP_SSL"), "true")
 
 	// sensible defaults (Gmail) but configurable via env
 	if smtpHost == "" {
@@ -252,6 +253,9 @@ func sendEmail(to, code string) error {
 		if p, err := strconv.Atoi(smtpPortStr); err == nil {
 			smtpPort = p
 		}
+	}
+	if smtpPort == 465 {
+		useSSL = true
 	}
 
 	if from == "" || pass == "" {
@@ -268,6 +272,7 @@ func sendEmail(to, code string) error {
 	m.AddAlternative("text/html", fmt.Sprintf("<p>Сәлем!</p><p>BiLim AI service жүйесінен сізге растау коды жіберілді:</p><h2>%s</h2><p>Егер бұл талапты сіз жібермеген болсаңыз, хабарламаны елемеңіз.</p>", code))
 
 	d := gomail.NewDialer(smtpHost, smtpPort, from, pass)
+	d.SSL = useSSL
 	d.TLSConfig = &tls.Config{ServerName: smtpHost}
 
 	err := d.DialAndSend(m)
