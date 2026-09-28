@@ -7,11 +7,21 @@ REM Project folder without trailing backslash
 set "ROOT=%~dp0"
 set "ROOT=%ROOT:~0,-1%"
 
+REM Prefer the current backend binary, fallback to legacy name
+set "BACKEND_EXE=%ROOT%\backend\bilim-backend.exe"
+if not exist "%BACKEND_EXE%" set "BACKEND_EXE=%ROOT%\backend\main.exe"
+
 REM Start PostgreSQL service if it is not running
 sc query postgresql-x64-17 | find "RUNNING" >nul || net start postgresql-x64-17 >nul 2>&1
 
 REM Backend - explicit working dir + full path to exe
-start "BiLim Backend" /min /D "%ROOT%\backend" cmd /k "%ROOT%\backend\main.exe"
+if exist "%BACKEND_EXE%" (
+    start "BiLim Backend" /min /D "%ROOT%\backend" cmd /k "%BACKEND_EXE%"
+) else (
+    echo Backend binary not found. Expected: "%ROOT%\backend\bilim-backend.exe" or "%ROOT%\backend\main.exe"
+    pause
+    exit /b 1
+)
 
 REM Frontend - explicit working dir
 start "BiLim Frontend" /min /D "%ROOT%" cmd /k npm run dev

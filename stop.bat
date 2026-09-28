@@ -3,6 +3,7 @@ REM Stop local BiLim server (backend + frontend)
 echo Stopping BiLim...
 
 REM Backend (Go)
+taskkill /F /IM bilim-backend.exe >nul 2>&1
 taskkill /F /IM main.exe >nul 2>&1
 
 REM Frontend / windows by title
