@@ -7,9 +7,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+    "bytes"
 	"log"
 	"math/big"
 	"net/http"
+    "io"
 	"os"
 	"regexp"
 	"strconv"
@@ -238,6 +240,43 @@ func generateCode() string {
 // ---------- EMAIL ----------
 
 func sendEmail(to, code string) error {
+	// First — if RESEND_API_KEY is provided, use Resend HTTP API to avoid SMTP port issues.
+	if key := os.Getenv("RESEND_API_KEY"); key != "" {
+		payload := map[string]interface{}{
+			"from":    os.Getenv("SMTP_EMAIL"),
+			"to":      []string{to},
+			"subject": "BiLim AI service — растау код",
+			"html":    fmt.Sprintf("<p>Сәлем!</p><p>BiLim AI service жүйесінен сізге растау коды жіберілді:</p><h2>%s</h2>", code),
+			"text":    fmt.Sprintf("Сәлем!\n\nBiLim AI service жүйесінен сізге растау коды жіберілді:\n\n%s", code),
+		}
+
+		b, _ := json.Marshal(payload)
+		req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(b))
+		if err != nil {
+			log.Printf("❌ Resend request build error: %v", err)
+			return err
+		}
+		req.Header.Set("Authorization", "Bearer "+key)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 15 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("❌ Resend API error for %s: %v", to, err)
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("❌ Resend API returned %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("resend api status %d", resp.StatusCode)
+		}
+
+		log.Printf("✅ Email sent via Resend to %s with code %s\n", to, code)
+		return nil
+	}
+
+	// Fallback to SMTP (legacy)
 	from := os.Getenv("SMTP_EMAIL")
 	pass := os.Getenv("SMTP_PASSWORD")
 	smtpHost := os.Getenv("SMTP_HOST")
