@@ -680,6 +680,43 @@ func verifyCodeHandler(w http.ResponseWriter, r *http.Request) {
 	jsonResponse(w, 200, map[string]interface{}{"status": "verified"})
 }
 
+// INTERNAL: debug endpoint to fetch pending code for an email (protected by ADMIN_KEY)
+func getDebugCodeHandler(w http.ResponseWriter, r *http.Request) {
+	if corsWithOrigin(w, r) {
+		return
+	}
+
+	adminKey := os.Getenv("ADMIN_KEY")
+	if adminKey == "" {
+		jsonResponse(w, 403, map[string]interface{}{"error": "admin_not_configured"})
+		return
+	}
+
+	provided := r.Header.Get("X-ADMIN-KEY")
+	if provided == "" || provided != adminKey {
+		jsonResponse(w, 403, map[string]interface{}{"error": "forbidden"})
+		return
+	}
+
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		jsonResponse(w, 400, map[string]interface{}{"error": "email required"})
+		return
+	}
+
+	norm := strings.ToLower(strings.TrimSpace(email))
+	mu.Lock()
+	data, exists := codes[norm]
+	mu.Unlock()
+
+	if !exists {
+		jsonResponse(w, 404, map[string]interface{}{"error": "not_found"})
+		return
+	}
+
+	jsonResponse(w, 200, map[string]interface{}{"email": norm, "code": data.Code, "expires_at": data.ExpiresAt})
+}
+
 func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if corsWithOrigin(w, r) {
 		return
@@ -1607,6 +1644,9 @@ func main() {
 	http.HandleFunc("/api/duel/room", authMiddleware(getDuelRoomHandler))
 	http.HandleFunc("/api/duel/start", authMiddleware(startDuelHandler))
 	http.HandleFunc("/api/duel/answer", authMiddleware(submitDuelAnswerHandler))
+
+	// Internal debug endpoints (protected)
+	http.HandleFunc("/internal/get-code", getDebugCodeHandler)
 
 	port := os.Getenv("PORT")
 	if port == "" {
