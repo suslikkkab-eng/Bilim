@@ -338,8 +338,9 @@ func sendEmail(to, code string) error {
 	}
 
 	if from == "" || pass == "" {
-		log.Printf("⚠️ SMTP credentials are not configured, skipping email send. Verification code for %s: %s\n", to, code)
-		return nil
+		msg := fmt.Sprintf("⚠️ SMTP credentials are not configured; no provider available for %s", to)
+		log.Println(msg)
+		return fmt.Errorf(msg)
 	}
 
 	m := gomail.NewMessage()
