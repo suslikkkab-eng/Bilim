@@ -522,7 +522,15 @@ func sendCodeHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := sendEmail(email, code); err != nil {
 		log.Printf("❌ Failed to send email to %s: %v", email, err)
-		// FIX: не фейлим регистрацию из-за ошибки SMTP — просто логируем и продолжаем
+
+		// If developer debug flag is enabled, return the code in response
+		// This is useful for testing when SMTP is blocked (Render/Gmail issues).
+		if strings.EqualFold(os.Getenv("DEV_EMAIL_DEBUG"), "true") {
+			jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed", "code": code})
+			return
+		}
+
+		// Default: don't fail the request, just report warning to client
 		jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed"})
 		return
 	}
