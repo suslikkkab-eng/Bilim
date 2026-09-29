@@ -1470,6 +1470,21 @@ func main() {
 
 	loadAllowedOrigins()
 
+	// Log SMTP configuration (without password) to help debugging on Render
+	smtpHostLog := os.Getenv("SMTP_HOST")
+	if smtpHostLog == "" {
+		smtpHostLog = "(default smtp.gmail.com)"
+	}
+	smtpPortLog := os.Getenv("SMTP_PORT")
+	if smtpPortLog == "" {
+		smtpPortLog = "(default 587)"
+	}
+	smtpSSLLog := os.Getenv("SMTP_SSL")
+	if smtpSSLLog == "" {
+		smtpSSLLog = "false"
+	}
+	log.Printf("SMTP config: host=%s port=%s ssl=%s\n", smtpHostLog, smtpPortLog, smtpSSLLog)
+
 	initDB()
 
 	go duelCleanupLoop()
