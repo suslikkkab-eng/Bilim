@@ -612,12 +612,12 @@ func sendCodeHandler(w http.ResponseWriter, r *http.Request) {
 		// If developer debug flag is enabled or debug query present, return the code in response
 		dbgQuery := strings.EqualFold(r.URL.Query().Get("debug"), "1") || strings.EqualFold(r.URL.Query().Get("debug"), "true")
 		if strings.EqualFold(os.Getenv("DEV_EMAIL_DEBUG"), "true") || dbgQuery {
-			jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed", "code": code})
+			jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed", "code": code, "error": err.Error()})
 			return
 		}
 
 		// Default: don't fail the request, just report warning to client
-		jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed"})
+		jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed", "error": err.Error()})
 		return
 	}
 
