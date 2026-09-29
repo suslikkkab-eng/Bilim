@@ -276,6 +276,46 @@ func sendEmail(to, code string) error {
 		return nil
 	}
 
+	// Second — if SENDGRID_API_KEY is provided, use SendGrid HTTP API as another SMTP-free option.
+	if sg := os.Getenv("SENDGRID_API_KEY"); sg != "" {
+		payload := map[string]interface{}{
+			"personalizations": []map[string]interface{}{ {
+				"to": []map[string]string{{"email": to}},
+			}},
+			"from": map[string]string{"email": os.Getenv("SMTP_EMAIL")},
+			"subject": "BiLim AI service — растау код",
+			"content": []map[string]string{
+				{"type": "text/plain", "value": fmt.Sprintf("Сәлем!\n\nBiLim AI service жүйесінен сізге растау коды жіберілді:\n\n%s", code)},
+				{"type": "text/html", "value": fmt.Sprintf("<p>Сәлем!</p><p>BiLim AI service жүйесінен сізге растау коды жіберілді:</p><h2>%s</h2>", code)},
+			},
+		}
+
+		b, _ := json.Marshal(payload)
+		req, err := http.NewRequest("POST", "https://api.sendgrid.com/v3/mail/send", bytes.NewBuffer(b))
+		if err != nil {
+			log.Printf("❌ SendGrid request build error: %v", err)
+			return err
+		}
+		req.Header.Set("Authorization", "Bearer "+sg)
+		req.Header.Set("Content-Type", "application/json")
+
+		client := &http.Client{Timeout: 15 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Printf("❌ SendGrid API error for %s: %v", to, err)
+			return err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			body, _ := io.ReadAll(resp.Body)
+			log.Printf("❌ SendGrid API returned %d: %s", resp.StatusCode, string(body))
+			return fmt.Errorf("sendgrid api status %d", resp.StatusCode)
+		}
+
+		log.Printf("✅ Email sent via SendGrid to %s with code %s\n", to, code)
+		return nil
+	}
+
 	// Fallback to SMTP (legacy)
 	from := os.Getenv("SMTP_EMAIL")
 	pass := os.Getenv("SMTP_PASSWORD")
