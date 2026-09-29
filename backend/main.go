@@ -606,9 +606,9 @@ func sendCodeHandler(w http.ResponseWriter, r *http.Request) {
 	if err := sendEmail(email, code); err != nil {
 		log.Printf("❌ Failed to send email to %s: %v", email, err)
 
-		// If developer debug flag is enabled, return the code in response
-		// This is useful for testing when SMTP is blocked (Render/Gmail issues).
-		if strings.EqualFold(os.Getenv("DEV_EMAIL_DEBUG"), "true") {
+		// If developer debug flag is enabled or debug query present, return the code in response
+		dbgQuery := strings.EqualFold(r.URL.Query().Get("debug"), "1") || strings.EqualFold(r.URL.Query().Get("debug"), "true")
+		if strings.EqualFold(os.Getenv("DEV_EMAIL_DEBUG"), "true") || dbgQuery {
 			jsonResponse(w, 200, map[string]interface{}{"status": "sent", "warning": "email_failed", "code": code})
 			return
 		}
@@ -619,6 +619,12 @@ func sendCodeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("✅ Successfully sent verification code to %s", email)
+	// If debug query param present, include code in successful response for testing
+	if strings.EqualFold(r.URL.Query().Get("debug"), "1") || strings.EqualFold(r.URL.Query().Get("debug"), "true") {
+		jsonResponse(w, 200, map[string]interface{}{"status": "sent", "code": code})
+		return
+	}
+
 	jsonResponse(w, 200, map[string]interface{}{"status": "sent"})
 }
 
