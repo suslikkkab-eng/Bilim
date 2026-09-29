@@ -692,16 +692,19 @@ func getDebugCodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	adminKey := os.Getenv("ADMIN_KEY")
-	if adminKey == "" {
-		jsonResponse(w, 403, map[string]interface{}{"error": "admin_not_configured"})
-		return
-	}
+	// If DEV_EMAIL_DEBUG=true, allow access without ADMIN_KEY for easy testing
+	if !strings.EqualFold(os.Getenv("DEV_EMAIL_DEBUG"), "true") {
+		adminKey := os.Getenv("ADMIN_KEY")
+		if adminKey == "" {
+			jsonResponse(w, 403, map[string]interface{}{"error": "admin_not_configured"})
+			return
+		}
 
-	provided := r.Header.Get("X-ADMIN-KEY")
-	if provided == "" || provided != adminKey {
-		jsonResponse(w, 403, map[string]interface{}{"error": "forbidden"})
-		return
+		provided := r.Header.Get("X-ADMIN-KEY")
+		if provided == "" || provided != adminKey {
+			jsonResponse(w, 403, map[string]interface{}{"error": "forbidden"})
+			return
+		}
 	}
 
 	email := r.URL.Query().Get("email")
