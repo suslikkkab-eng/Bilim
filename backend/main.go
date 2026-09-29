@@ -242,6 +242,7 @@ func generateCode() string {
 func sendEmail(to, code string) error {
 	// First — if RESEND_API_KEY is provided, use Resend HTTP API to avoid SMTP port issues.
 	if key := os.Getenv("RESEND_API_KEY"); key != "" {
+		log.Printf("📧 [sendEmail] Using Resend API (key length: %d chars)", len(key))
 		payload := map[string]interface{}{
 			"from":    os.Getenv("SMTP_EMAIL"),
 			"to":      []string{to},
@@ -266,15 +267,17 @@ func sendEmail(to, code string) error {
 			return err
 		}
 		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			body, _ := io.ReadAll(resp.Body)
 			log.Printf("❌ Resend API returned %d: %s", resp.StatusCode, string(body))
 			return fmt.Errorf("resend api status %d", resp.StatusCode)
 		}
 
-		log.Printf("✅ Email sent via Resend to %s with code %s\n", to, code)
+		log.Printf("✅ Resend API response %d, email sent to %s with code %s", resp.StatusCode, to, code)
 		return nil
 	}
+
+	log.Printf("📧 [sendEmail] No RESEND_API_KEY, trying alternatives...")
 
 	// Second — if SENDGRID_API_KEY is provided, use SendGrid HTTP API as another SMTP-free option.
 	if sg := os.Getenv("SENDGRID_API_KEY"); sg != "" {
