@@ -591,12 +591,15 @@ func sendCodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("📧 Sending verification code to: %s", email)
+	// Normalize email key (trim + lowercase) to avoid mismatch between send and verify
+	normEmail := strings.ToLower(strings.TrimSpace(email))
+
+	log.Printf("📧 Sending verification code to: %s (key=%s)", email, normEmail)
 
 	code := generateCode()
 
 	mu.Lock()
-	codes[email] = CodeData{Code: code, ExpiresAt: time.Now().Add(10 * time.Minute)}
+	codes[normEmail] = CodeData{Code: code, ExpiresAt: time.Now().Add(10 * time.Minute)}
 	mu.Unlock()
 
 	if err := sendEmail(email, code); err != nil {
@@ -637,8 +640,11 @@ func verifyCodeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize email key same as when sending
+	normEmail := strings.ToLower(strings.TrimSpace(email))
+
 	mu.Lock()
-	data, exists := codes[email]
+	data, exists := codes[normEmail]
 	mu.Unlock()
 
 	// FIX: проверяем существование кода ДО проверки времени
@@ -662,7 +668,7 @@ func verifyCodeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Код верный — удаляем и помечаем юзера верифицированным
 	mu.Lock()
-	delete(codes, email)
+	delete(codes, normEmail)
 	mu.Unlock()
 
 	if _, err := db.Exec("UPDATE users SET verified=true WHERE email=$1", email); err != nil {
